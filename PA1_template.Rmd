@@ -1,25 +1,96 @@
 ---
-title: "Reproducible Research: Peer Assessment 1"
-output: 
-  html_document:
-    keep_md: true
+title: 'Reproducable research: Peer assessment 1'
+author: "Jason"
+date: "February 15, 2015"
+output: html_document
 ---
+##Introduction
 
+It is now possible to collect a large amount of data about personal movement using activity monitoring devices such as a Fitbit, Nike Fuelband, or Jawbone Up. These type of devices are part of the “quantified self” movement – a group of enthusiasts who take measurements about themselves regularly to improve their health, to find patterns in their behavior, or because they are tech geeks. But these data remain under-utilized both because the raw data are hard to obtain and there is a lack of statistical methods and software for processing and interpreting the data.
 
-## Loading and preprocessing the data
+This assignment makes use of data from a personal activity monitoring device. This device collects data at 5 minute intervals through out the day. The data consists of two months of data from an anonymous individual collected during the months of October and November, 2012 and include the number of steps taken in 5 minute intervals each day.
 
+##Loading and preprocessing the data
+Read data into R: 
+```{r}
+wristband <- read.csv('activity.csv', header = TRUE, sep = ",",
+                  colClasses=c("numeric", "character", "numeric"))
+head(wristband)
+```
+Process data:
+```{r}
+wristband$date <- as.Date(wristband$date, format = "%Y-%m-%d")
+```
+Show data:
+```{r}
+str(wristband)
+```
+##What is mean total number of steps taken per day?
+```{r}
+steps_per_day <- aggregate(steps ~ date, wristband, sum)
+colnames(steps_per_day) <- c("date","steps")
+head(steps_per_day)
+hist(steps_per_day$steps, main = "Histogram of total steps per day", xlab = "steps",ylab="days", freq=TRUE, col = "red")
+```
 
+Calculate and report the mean and median of the total number of steps taken per day
+```{r}
+mean(steps_per_day$steps, na.rm=TRUE)
+median(steps_per_day$steps, na.rm=TRUE)
+```
 
-## What is mean total number of steps taken per day?
+##What is the average daily activity pattern?
+```{r}
+avg.steps.on.interval<-tapply(wristband$steps,wristband$interval,"mean",na.rm=TRUE) 
+plot(names(avg.steps.on.interval),avg.steps.on.interval, xlab="interval ID",ylab="steps", type="l")
+```
 
+Which 5-minute interval, on average across all the days in the dataset, contains the maximum number of steps? see below calculation
+```{r}
+which.max(avg.steps.on.interval)
+```
+##Imputing missing values
+The missing values are summarized as:
+```{r}
+sum(is.na(wristband$steps))
+```
 
+fill missing values with mean:
+```{r}
+wristbandfill<-wristband
+wristbandfill$steps[is.na(wristband$steps)]<-avg.steps.on.interval[is.na(wristband$steps)]
+head(wristbandfill)
+```
+histogram plot of new data:
+```{r}
+steps_per_day2 <- aggregate(steps ~ date, wristbandfill, sum)
+colnames(steps_per_day2) <- c("date","steps")
+hist(steps_per_day2$steps, main = "Histogram of total steps per day", xlab = "steps",ylab="days", freq=TRUE, col = "red")
+```
 
-## What is the average daily activity pattern?
+mean and median of new data:
+```{r}
+mean(steps_per_day2$steps, na.rm=TRUE)
+median(steps_per_day2$steps, na.rm=TRUE)
+```
+mean is not affected since we use the mean to fill this slot and calculate mean again. median is affected
 
+##Are there differences in activity patterns between weekdays and weekends?
+A new factor variable is created: 
+```{r}
+wristband7<-wristbandfill
+wristband7$weektime <- as.factor(ifelse(weekdays(wristband$date) %in% 
+                        c("Saturday","Sunday"),"weekend", "weekday"))
+summary(wristband7)
+```
+plot:
+```{r}
+StepsByWeektime <- aggregate(steps ~ interval + weektime, data = wristband7, mean)
+names(StepsByWeektime) <- c("interval", "weektime", "steps")
+#StepsByWeektime$interval <- as.numeric(levels(StepsByWeektime$interval))[StepsByWeektime$interval]
+library(lattice)
+xyplot(steps ~ interval | weektime, StepsByWeektime,  type = "l", layout = c(1, 2), 
+        xlab = "Interval", ylab = "Number of steps")
+```
 
-
-## Imputing missing values
-
-
-
-## Are there differences in activity patterns between weekdays and weekends?
+There is obviouse difference between weekdays and weekends. It appears this user gets up later/goes to bed later during weekends, he/she is also more active during those weekend daytimes.
